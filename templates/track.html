@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Token | QLESS AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-card">
+        <a href="/" class="brand">QLESS<span>AI</span></a>
+
+        {% if token %}
+            <h1>Token Tracking</h1>
+            <p class="muted">Your current service information.</p>
+
+            <div class="tracking-number">{{ token.token_number }}</div>
+
+            <div class="tracking-detail">
+                <span>Customer</span>
+                <strong>{{ token.customer_name }}</strong>
+            </div>
+            <div class="tracking-detail">
+                <span>Service</span>
+                <strong>{{ token.service }}</strong>
+            </div>
+            <div class="tracking-detail">
+                <span>Status</span>
+                <strong class="status-badge {{ token.status|lower }}">
+                    {{ token.status }}
+                </strong>
+            </div>
+            <div class="tracking-detail">
+                <span>Waiting customers ahead (approx.)</span>
+                <strong>{{ people_ahead }}</strong>
+            </div>
+        {% else %}
+            <h1>Token not found</h1>
+            <p class="muted">Please check your token number.</p>
+        {% endif %}
+
+        <a href="/" class="btn btn-primary full-width">Back to Home</a>
+    </div>
+</body>
+</html>
