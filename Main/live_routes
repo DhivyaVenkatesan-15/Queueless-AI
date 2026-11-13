@@ -1,0 +1,43 @@
+
+from flask import Blueprint, jsonify
+
+from database import get_all_tokens
+
+
+live_blueprint = Blueprint("live", __name__)
+
+
+@live_blueprint.route("/api/live-queue")
+def live_queue_data():
+
+    tokens = get_all_tokens()
+
+    waiting = [
+        token for token in tokens
+        if token.get("status") == "Waiting"
+    ]
+
+    serving = [
+        token for token in tokens
+        if token.get("status") == "Serving"
+    ]
+
+    completed = [
+        token for token in tokens
+        if token.get("status") == "Completed"
+    ]
+
+    return jsonify({
+        "waiting": len(waiting),
+        "serving": len(serving),
+        "completed": len(completed),
+        "total": len(tokens),
+        "tokens": [
+            {
+                "token_number": token.get("token_number"),
+                "status": token.get("status"),
+                "service": token.get("service")
+            }
+            for token in tokens
+        ]
+    })
