@@ -1,0 +1,91 @@
+
+from prediction import predict_waiting_time
+from rag import retrieve_information
+from nexus_api import ask_nexus_ai
+
+
+def queue_monitoring_agent(tokens):
+    waiting = [
+        token for token in tokens
+        if token["status"] == "Waiting"
+    ]
+
+    serving = [
+        token for token in tokens
+        if token["status"] == "Serving"
+    ]
+
+    completed = [
+        token for token in tokens
+        if token["status"] == "Completed"
+    ]
+
+    return {
+        "waiting_count": len(waiting),
+        "serving_count": len(serving),
+        "completed_count": len(completed),
+        "total_count": len(tokens),
+        "crowded": len(waiting) >= 5
+    }
+
+
+
+def prediction_agent(people_ahead, service_time, counters):
+    from prediction import get_prediction
+
+    return get_prediction(
+        people_ahead,
+        service_time,
+        counters
+    )
+
+
+
+def recommendation_agent(waiting_count):
+
+    if waiting_count >= 10:
+        question = "How can we manage a high queue during peak hours?"
+        local_recommendation = (
+            "High queue detected. Consider opening another service counter."
+        )
+
+    elif waiting_count >= 5:
+        question = "How can we reduce customer waiting time?"
+        local_recommendation = (
+            "Moderate queue detected. Monitor service counters."
+        )
+
+    else:
+        question = "How can we maintain an organized queue?"
+        local_recommendation = (
+            "Queue is under control. Continue normal operations."
+        )
+
+    knowledge = retrieve_information(question)
+
+    prompt = f"""
+You are an intelligent queue management AI assistant.
+
+Current waiting customers: {waiting_count}
+
+Retrieved queue management knowledge:
+{knowledge}
+
+Question:
+{question}
+
+Provide:
+1. Current queue analysis.
+2. Practical recommendations.
+3. Suggestions to reduce waiting time.
+
+Keep the answer professional, clear and concise.
+"""
+
+    ai_response = ask_nexus_ai(prompt)
+
+    return {
+        "recommendation": local_recommendation,
+        "ai_response": ai_response,
+        "retrieved_knowledge": knowledge
+    }
