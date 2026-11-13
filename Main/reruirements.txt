@@ -1,0 +1,10 @@
+Flask
+python-dotenv
+requests
+pandas
+numpy
+scikit-learn
+sentence-transformers
+faiss-cpu
+pypdf
+qrcode[pil]
