@@ -1,0 +1,84 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUELESS AI | Smart Queue Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="brand">QLESS<span>AI</span></a>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <main class="hero">
+        <div class="hero-content">
+            <span class="eyebrow">AI POWERED QUEUE MANAGEMENT</span>
+            <h1>Smarter Queues.<br><span>Better Experiences.</span></h1>
+            <p>
+                Manage customer queues intelligently with token generation,
+                waiting-time prediction and AI-powered recommendations.
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('register') }}" class="btn btn-primary">Create Account</a>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary">Sign In</a>
+            </div>
+        </div>
+
+        <div class="hero-card">
+            <div class="card-top">
+                <span class="status-dot"></span>
+                <span>Queue Intelligence</span>
+                <span class="live-label">SYSTEM</span>
+            </div>
+            <div class="preview-number">QLESS AI</div>
+            <p class="muted">Intelligent Queue Prediction System</p>
+            <div class="preview-stats">
+                <div><strong>AI</strong><small>Recommendations</small></div>
+                <div><strong>ML</strong><small>Prediction</small></div>
+                <div><strong>24/7</strong><small>Monitoring</small></div>
+            </div>
+        </div>
+    </main>
+
+    <section class="features-section" id="features">
+        <div class="section-heading">
+            <span class="eyebrow">WHAT WE PROVIDE</span>
+            <h2>One platform. Smarter queue operations.</h2>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">01</div>
+                <h3>Digital Tokens</h3>
+                <p>Generate and manage customer tokens digitally.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">02</div>
+                <h3>Waiting Prediction</h3>
+                <p>Estimate waiting time using queue information.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">03</div>
+                <h3>AI Recommendations</h3>
+                <p>Get queue-management suggestions using AI.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">04</div>
+                <h3>Analytics</h3>
+                <p>Monitor queue activity and download reports.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>© 2026 QLESS AI — Intelligent Queue Prediction Management System</p>
+    </footer>
+</body>
+</html>
