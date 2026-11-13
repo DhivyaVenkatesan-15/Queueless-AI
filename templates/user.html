@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard | QLESS AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</head>
+<body>
+    <nav class="navbar dashboard-nav">
+        <a href="/" class="brand">QLESS<span>AI</span></a>
+        <div class="nav-links">
+            <span class="muted">Welcome, {{ username }}</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="page-heading">
+            <div>
+                <span class="eyebrow">CUSTOMER PORTAL</span>
+                <h1>Your Queue Dashboard</h1>
+                <p class="muted">Generate a token and track your service status.</p>
+            </div>
+            <span class="role-badge">USER</span>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Your Waiting Tokens</span>
+                <strong>{{ waiting_count }}</strong>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Estimated Waiting Time</span>
+                <strong>{{ waiting_time }} <small>min</small></strong>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Your Total Tokens</span>
+                <strong>{{ tokens|length }}</strong>
+            </div>
+        </section>
+
+        <section class="content-card">
+            <div class="card-heading">
+                <div>
+                    <h2>Generate New Token</h2>
+                    <p class="muted">Select the service you need.</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('generate_token_route') }}" class="token-form">
+                <select name="service" required>
+                    <option value="">Select a service</option>
+                    <option value="General Enquiry">General Enquiry</option>
+                    <option value="Account Service">Account Service</option>
+                    <option value="Customer Support">Customer Support</option>
+                    <option value="Document Verification">Document Verification</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Generate Token</button>
+            </form>
+        </section>
+
+        <section class="content-card">
+            <div class="card-heading">
+                <div>
+                    <h2>Your Token History</h2>
+                    <p class="muted">Check the status of your tokens.</p>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Token</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Track</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for token in tokens %}
+                        <tr>
+                            <td>{{ token.token_number }}</td>
+                            <td>{{ token.service }}</td>
+                            <td>
+                                <span class="status-badge {{ token.status|lower }}">
+                                    {{ token.status }}
+                                </span>
+                            </td>
+                            <td>{{ token.created_at }}</td>
+                            <td>
+                                <a class="table-link"
+                                   href="{{ url_for('track_token', token_number=token.token_number) }}">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                No tokens generated yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
