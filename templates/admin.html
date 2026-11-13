@@ -1,0 +1,424 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>QUEUELESS AI | Admin Dashboard</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- NAVIGATION -->
+    <nav class="navbar">
+        <div class="brand">
+            <h2>QUEUELESS <span>AI</span></h2>
+            <p>Intelligent Queue Management</p>
+        </div>
+
+        <div class="nav-links">
+            <a href="{{ url_for('admin') }}">Dashboard</a>
+            <a href="#analytics">Analytics</a>
+            <a href="#recommendations">AI Insights</a>
+            <a href="#tokens">Tokens</a>
+            <a href="{{ url_for('export_csv') }}">Export CSV</a>
+            <a href="{{ url_for('logout') }}" class="logout-btn">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+
+    <!-- MAIN HEADER -->
+    <section class="dashboard-header">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <p>Monitor and manage customer queues in real time.</p>
+        </div>
+
+        <div class="live-status">
+            <span class="status-dot"></span>
+            Live Monitoring
+        </div>
+    </section>
+
+
+    <!-- STATISTICS -->
+    <section class="stats-grid">
+
+        <div class="stat-card">
+            <p>Waiting Customers</p>
+            <h2 data-live-waiting>
+                {{ statistics.waiting | default(0) }}
+            </h2>
+            <span>Currently waiting</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Serving Customers</p>
+            <h2 data-live-serving>
+                {{ statistics.serving | default(0) }}
+            </h2>
+            <span>Currently being served</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Completed Customers</p>
+            <h2 data-live-completed>
+                {{ statistics.completed | default(0) }}
+            </h2>
+            <span>Service completed</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Total Customers</p>
+            <h2 data-live-total>
+                {{ statistics.total | default(0) }}
+            </h2>
+            <span>All queue tokens</span>
+        </div>
+
+    </section>
+
+
+    <!-- LIVE UPDATE -->
+    <div class="live-update">
+        <span class="status-dot"></span>
+        <span id="liveUpdateTime">
+            Connecting to live dashboard...
+        </span>
+    </div>
+
+
+    <!-- ANALYTICS -->
+    <section class="dashboard-section" id="analytics">
+
+        <div class="section-heading">
+            <div>
+                <h2>Queue Analytics</h2>
+                <p>Current customer distribution</p>
+            </div>
+        </div>
+
+        <div class="analytics-grid">
+
+            <div class="content-card chart-card">
+                <h3>Queue Distribution</h3>
+
+                <div class="chart-container">
+                    <canvas id="queueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="content-card prediction-card">
+
+                <h3>Queue Prediction</h3>
+
+                <div class="prediction-value">
+                    {{ waiting_time | default(0) }}
+                    <span>Minutes</span>
+                </div>
+
+                <p>
+                    Estimated waiting time based on current queue
+                    conditions.
+                </p>
+
+                <div class="prediction-details">
+                    <p>
+                        Waiting Customers:
+                        <strong>
+                            {{ monitoring.waiting_count | default(0) }}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Serving Customers:
+                        <strong>
+                            {{ monitoring.serving_count | default(0) }}
+                        </strong>
+                    </p>
+
+                    <p>
+                        Queue Condition:
+                        <strong>
+                            {% if monitoring.crowded | default(false) %}
+                                High Traffic
+                            {% else %}
+                                Normal Traffic
+                            {% endif %}
+                        </strong>
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- AI RECOMMENDATIONS -->
+    <section class="dashboard-section" id="recommendations">
+
+        <div class="section-heading">
+            <div>
+                <h2>AI Intelligence Center</h2>
+                <p>Gemini AI and RAG-based recommendations</p>
+            </div>
+        </div>
+
+        <div class="content-card ai-card">
+
+            <h3>AI Queue Recommendation</h3>
+
+            <div class="recommendation-box">
+                <h4>System Recommendation</h4>
+
+                <p>
+                    {{ recommendations.recommendation
+                       | default("Queue monitoring is active.") }}
+                </p>
+            </div>
+
+            <div class="ai-response-box">
+                <h4>Gemini AI Analysis</h4>
+
+                <p>
+                    {{ recommendations.ai_response
+                       | default("AI analysis is not available currently.") }}
+                </p>
+            </div>
+
+            <div class="knowledge-box">
+                <h4>Retrieved Knowledge (RAG)</h4>
+
+                <p>
+                    {{ recommendations.retrieved_knowledge
+                       | default("Knowledge retrieval information is not available.") }}
+                </p>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- QUEUE OPERATIONS -->
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+            <div>
+                <h2>Queue Operations</h2>
+                <p>Manage customer service operations</p>
+            </div>
+        </div>
+
+        <div class="content-card operations-card">
+
+            <form method="POST"
+                  action="{{ url_for('serve_next') }}">
+
+                <button type="submit" class="primary-btn">
+                    Serve Next Token
+                </button>
+
+            </form>
+
+            <form method="POST"
+                  action="{{ url_for('complete_token') }}">
+
+                <button type="submit" class="success-btn">
+                    Complete Current Token
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+    <!-- ALL TOKENS -->
+    <section class="dashboard-section" id="tokens">
+
+        <div class="section-heading">
+            <div>
+                <h2>All Queue Tokens</h2>
+                <p>Customer token details and status</p>
+            </div>
+
+            <a href="{{ url_for('export_csv') }}"
+               class="secondary-btn">
+                Download CSV
+            </a>
+        </div>
+
+        <div class="content-card table-card">
+
+            <div class="table-responsive">
+
+                <table class="token-table">
+
+                    <thead>
+                        <tr>
+                            <th>Token Number</th>
+                            <th>Customer Name</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>QR Code</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for token in tokens %}
+
+                        <tr>
+                            <td>
+                                {{ token.token_number }}
+                            </td>
+
+                            <td>
+                                {{ token.customer_name }}
+                            </td>
+
+                            <td>
+                                {{ token.service }}
+                            </td>
+
+                            <td>
+                                <span class="status-badge
+                                    {{ token.status | lower }}">
+                                    {{ token.status }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <a href="{{ url_for('qr.generate_qr',
+                                    token_number=token.token_number) }}"
+                                   target="_blank"
+                                   class="qr-link">
+                                    View QR
+                                </a>
+                            </td>
+
+                        </tr>
+
+                        {% else %}
+
+                        <tr>
+                            <td colspan="5">
+                                No queue tokens available.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <p>
+            QUEUELESS AI |
+            Intelligent Queue Prediction and Management System
+        </p>
+    </footer>
+
+</div>
+
+
+<!-- QUEUE CHART -->
+<script>
+
+    const queueStats = {
+        waiting: {{ statistics.waiting | default(0) | tojson }},
+        serving: {{ statistics.serving | default(0) | tojson }},
+        completed: {{ statistics.completed | default(0) | tojson }}
+    };
+
+    const chartElement =
+        document.getElementById("queueChart");
+
+    if (chartElement && window.Chart) {
+
+        new Chart(chartElement, {
+
+            type: "doughnut",
+
+            data: {
+
+                labels: [
+                    "Waiting",
+                    "Serving",
+                    "Completed"
+                ],
+
+                datasets: [{
+
+                    data: [
+                        queueStats.waiting,
+                        queueStats.serving,
+                        queueStats.completed
+                    ],
+
+                    backgroundColor: [
+                        "#F59E0B",
+                        "#3B82F6",
+                        "#10B981"
+                    ],
+
+                    borderWidth: 0
+
+                }]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+                        position: "bottom"
+                    }
+
+                }
+
+            }
+
+        });
+
+    }
+
+</script>
+
+
+<!-- EXISTING JAVASCRIPT -->
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<!-- LIVE DASHBOARD JAVASCRIPT -->
+<script src="{{ url_for('static', filename='live.js') }}"></script>
+
+</body>
+</html>
