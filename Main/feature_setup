@@ -1,0 +1,51 @@
+
+import sqlite3
+
+DATABASE_NAME = "queue.db"
+
+
+def initialize_advanced_features():
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("PRAGMA table_info(tokens)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "started_at" not in columns:
+        cursor.execute(
+            "ALTER TABLE tokens ADD COLUMN started_at TEXT"
+        )
+
+    if "completed_at" not in columns:
+        cursor.execute(
+            "ALTER TABLE tokens ADD COLUMN completed_at TEXT"
+        )
+
+    cursor.execute("""
+        CREATE TRIGGER IF NOT EXISTS token_started_timestamp
+        AFTER UPDATE OF status ON tokens
+        WHEN NEW.status = 'Serving'
+             AND OLD.status != 'Serving'
+        BEGIN
+            UPDATE tokens
+            SET started_at = datetime('now', 'localtime')
+            WHERE id = NEW.id;
+        END;
+    """)
+
+    cursor.execute("""
+        CREATE TRIGGER IF NOT EXISTS token_completed_timestamp
+        AFTER UPDATE OF status ON tokens
+        WHEN NEW.status = 'Completed'
+             AND OLD.status != 'Completed'
+        BEGIN
+            UPDATE tokens
+            SET completed_at = datetime('now', 'localtime')
+            WHERE id = NEW.id;
+        END;
+    """)
+
+    connection.commit()
+    connection.close()
+
+    print("Advanced database features initialized.")
