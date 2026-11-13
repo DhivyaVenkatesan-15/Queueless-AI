@@ -1,0 +1,351 @@
+
+import os
+import csv
+import io
+from feature_setup import initialize_advanced_features
+from qr_routes import qr_blueprint
+from live_routes import live_blueprint
+
+from functools import wraps
+from flask import (
+    Flask, render_template, request, redirect,
+    url_for, session, flash, Response, jsonify
+)
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+from dotenv import load_dotenv
+
+from database import (
+    initialize_database,
+    create_user,
+    get_user_by_username,
+    get_user_by_email,
+    ensure_admin,
+    create_token,
+    get_all_tokens,
+    get_user_tokens,
+    get_token_by_number,
+    serve_next_token,
+    complete_current_token,
+    get_queue_statistics
+)
+
+from agents import (
+    queue_monitoring_agent,
+    prediction_agent,
+    recommendation_agent
+)
+
+load_dotenv()
+
+app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+
+if not app.secret_key:
+    raise RuntimeError("FLASK_SECRET_KEY is missing in .env")
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False
+)
+app.register_blueprint(qr_blueprint)
+app.register_blueprint(live_blueprint)
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "change-this-secret-before-deployment"
+)
+
+initialize_database()
+initialize_advanced_features()
+
+ensure_admin(
+    os.getenv("ADMIN_USERNAME"),
+    os.getenv("ADMIN_PASSWORD")
+)
+
+
+def login_required(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please login first.", "error")
+            return redirect(url_for("login"))
+
+        return function(*args, **kwargs)
+
+    return wrapper
+
+
+def admin_required(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+
+        if session.get("role") != "admin":
+            flash("Admin access required.", "error")
+            return redirect(url_for("dashboard"))
+
+        return function(*args, **kwargs)
+
+    return wrapper
+
+
+@app.route("/")
+def home():
+    if session.get("role") == "admin":
+        return redirect(url_for("admin_dashboard"))
+
+    if session.get("user_id"):
+        return redirect(url_for("dashboard"))
+
+    return render_template("index.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not username or not email or not password:
+            flash("All fields are required.", "error")
+            return redirect(url_for("register"))
+
+        if len(password) < 8:
+            flash("Password must contain at least 8 characters.", "error")
+            return redirect(url_for("register"))
+
+        if get_user_by_username(username) or get_user_by_email(email):
+            flash("Username or email already exists.", "error")
+            return redirect(url_for("register"))
+
+        password_hash = generate_password_hash(password)
+
+        success = create_user(
+            username,
+            email,
+            password_hash,
+            "user"
+        )
+
+        if success:
+            flash("Registration successful. Please login.", "success")
+            return redirect(url_for("login"))
+
+        flash("Registration failed. Try again.", "error")
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        user = get_user_by_username(username)
+
+        if user and check_password_hash(user["password"], password):
+            session.clear()
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["role"] = user["role"]
+
+            if user["role"] == "admin":
+                return redirect(url_for("admin_dashboard"))
+
+            return redirect(url_for("dashboard"))
+
+        flash("Invalid username or password.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.", "success")
+    return redirect(url_for("home"))
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    tokens = get_user_tokens(session["user_id"])
+
+    waiting_count = sum(
+        1 for token in tokens
+        if token["status"] == "Waiting"
+    )
+
+    waiting_time = prediction_agent(
+        people_ahead=waiting_count,
+        service_time=5,
+        counters=2
+    )
+
+    return render_template(
+        "user.html",
+        tokens=tokens,
+        waiting_count=waiting_count,
+        waiting_time=waiting_time,
+        username=session["username"]
+    )
+
+
+@app.route("/generate-token", methods=["POST"])
+@login_required
+def generate_token_route():
+    customer_name = session["username"]
+    service = request.form.get("service", "").strip()
+
+    allowed_services = [
+        "General Enquiry",
+        "Account Service",
+        "Customer Support",
+        "Document Verification"
+    ]
+
+    if service not in allowed_services:
+        flash("Please select a valid service.", "error")
+        return redirect(url_for("dashboard"))
+
+    token_number = create_token(
+        customer_name,
+        service,
+        session["user_id"]
+    )
+
+    flash(
+        f"Token generated successfully: {token_number}",
+        "success"
+    )
+
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/track/<token_number>")
+def track_token(token_number):
+    token = get_token_by_number(token_number)
+
+    if not token:
+        return render_template(
+            "track.html",
+            token=None
+        ), 404
+
+    all_tokens = get_all_tokens()
+
+    people_ahead = sum(
+        1 for item in all_tokens
+        if item["status"] == "Waiting"
+        and item["id"] < token["id"]
+    )
+
+    return render_template(
+        "track.html",
+        token=token,
+        people_ahead=people_ahead
+    )
+
+
+@app.route("/admin")
+@admin_required
+def admin_dashboard():
+    tokens = get_all_tokens()
+
+    monitoring = queue_monitoring_agent(tokens)
+
+    waiting_count = monitoring["waiting_count"]
+
+    waiting_time = prediction_agent(
+        people_ahead=waiting_count,
+        service_time=5,
+        counters=2
+    )
+
+    recommendations = recommendation_agent(waiting_count)
+    statistics = get_queue_statistics()
+
+    return render_template(
+        "admin.html",
+        tokens=tokens,
+        monitoring=monitoring,
+        waiting_time=waiting_time,
+        recommendations=recommendations,
+        statistics=statistics
+    )
+
+
+@app.route("/serve-next", methods=["POST"])
+@admin_required
+def serve_next():
+    serve_next_token()
+    flash("Next token is now being served.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/complete-token", methods=["POST"])
+@admin_required
+def complete_token():
+    complete_current_token()
+    flash("Current token completed.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/export-csv")
+@admin_required
+def export_csv():
+    tokens = get_all_tokens()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Token Number",
+        "Customer Name",
+        "Service",
+        "Status",
+        "Created At"
+    ])
+
+    for token in tokens:
+        writer.writerow([
+            token["token_number"],
+            token["customer_name"],
+            token["service"],
+            token["status"],
+            token["created_at"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=queue_report.csv"
+        }
+    )
+
+
+@app.route("/api/queue")
+@admin_required
+def queue_api():
+    return jsonify({
+        "statistics": get_queue_statistics(),
+        "tokens": get_all_tokens()
+    })
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("404.html"), 404
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
